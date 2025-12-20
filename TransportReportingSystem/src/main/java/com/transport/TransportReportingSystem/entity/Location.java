@@ -1,8 +1,5 @@
 package com.transport.TransportReportingSystem.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.transport.TransportReportingSystem.enums.LocationType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,7 +13,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+
 public class Location {
     
     @Id
@@ -31,18 +28,16 @@ public class Location {
     @Column(name = "location_type", nullable = false)
     private LocationType locationType;
     
-    
-    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_location_id")
-    @JsonBackReference
+
     private Location parentLocation;
     
     @OneToMany(mappedBy = "parentLocation", cascade = CascadeType.ALL)
-    @JsonManagedReference
+   
     private List<Location> childLocations;
     
     @OneToMany(mappedBy = "location", cascade = CascadeType.ALL)
-    @JsonBackReference
+    
     private List<User> users;
 }

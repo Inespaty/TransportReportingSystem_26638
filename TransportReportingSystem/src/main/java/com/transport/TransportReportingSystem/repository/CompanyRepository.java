@@ -22,7 +22,7 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
     
     List<Company> findByContactInfoContaining(String keyword);
     
-    // Pagination support
-    @NonNull
-    Page<Company> findAll(@NonNull Pageable pageable);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT c FROM Company c WHERE LOWER(c.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.contactInfo) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Company> searchCompanies(@org.springframework.data.repository.query.Param("keyword") String keyword, Pageable pageable);
 }

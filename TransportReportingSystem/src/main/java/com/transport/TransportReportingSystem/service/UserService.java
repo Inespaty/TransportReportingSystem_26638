@@ -4,11 +4,11 @@ package com.transport.TransportReportingSystem.service;
 import com.transport.TransportReportingSystem.dto.UserDTO;
 import com.transport.TransportReportingSystem.entity.User;
 import com.transport.TransportReportingSystem.entity.Location;
-import com.transport.TransportReportingSystem.entity.Admin;
+
 import com.transport.TransportReportingSystem.entity.Company;
 import com.transport.TransportReportingSystem.enums.UserRole;
 import com.transport.TransportReportingSystem.repository.UserRepository;
-import com.transport.TransportReportingSystem.repository.AdminRepository;
+
 import com.transport.TransportReportingSystem.repository.LocationRepository;
 import com.transport.TransportReportingSystem.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
     private final CompanyRepository companyRepository;
-    private final AdminRepository adminRepository;
+    private final ActivityService activityService;
+
     
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
@@ -40,6 +41,10 @@ public class UserService {
     public UserDTO createUser(UserDTO userDTO) {
         User user = new User();
         user.setName(userDTO.getName());
+        if (userRepository.existsByEmail(userDTO.getEmail())) {
+            throw new RuntimeException("User with email " + userDTO.getEmail() + " already exists");
+        }
+        
         user.setEmail(userDTO.getEmail());
         user.setPhone(userDTO.getPhone());
         
@@ -50,33 +55,40 @@ public class UserService {
         user.setRole(UserRole.valueOf(userDTO.getRole()));
         user.setCreatedAt(LocalDate.now());
         
-        if (userDTO.getLocationId() != null) {
-            Location location = locationRepository.findById(userDTO.getLocationId())
+        Long locationId = userDTO.getLocationId();
+        
+        // Enforce location for standard Users
+        if (user.getRole() == UserRole.USER && locationId == null) {
+            throw new RuntimeException("Location is required for standard users.");
+        }
+        if (locationId != null) {
+            Location location = locationRepository.findById(locationId)
                 .orElseThrow(() -> new RuntimeException("Location not found"));
             user.setLocation(location);
         }
         
-        if (userDTO.getCompanyId() != null) {
-            Company company = companyRepository.findById(userDTO.getCompanyId())
+        Long companyId = userDTO.getCompanyId();
+        if (companyId != null) {
+            Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Company not found"));
             user.setCompany(company);
         }
         
+        user.setIsTwoFactorEnabled(userDTO.getIsTwoFactorEnabled() != null ? userDTO.getIsTwoFactorEnabled() : false);
         
-        if (user.getRole() == UserRole.COMPANY_ADMIN || user.getRole() == UserRole.SUPER_ADMIN) {
-            Admin admin = new Admin();
-            admin.setUser(user);
-            admin.setCompany(user.getCompany());
-            admin.setIsSuperAdmin(user.getRole() == UserRole.SUPER_ADMIN);
-            user.setAdmin(admin); 
-        }
+        
+
         
         User savedUser = userRepository.save(user);
+        activityService.logSuccess("New User Created", "Account for " + savedUser.getName() + " was successfully created.", null);
         return convertToDTO(savedUser);
     }
     
     
     public UserDTO getUserById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
         User user = userRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("User not found"));
         return convertToDTO(user);
@@ -90,13 +102,26 @@ public class UserService {
     }
     
     
-    public Page<UserDTO> getAllUsersPaginated(Pageable pageable) {
-        return userRepository.findAll(pageable)
-            .map(this::convertToDTO);
+    public Page<UserDTO> getAllUsersPaginated(String search, Pageable pageable) {
+        if (pageable == null) {
+            throw new IllegalArgumentException("Pageable cannot be null");
+        }
+        
+        Page<User> usersPage;
+        if (search != null && !search.trim().isEmpty()) {
+            usersPage = userRepository.searchUsers(search, pageable);
+        } else {
+            usersPage = userRepository.findAll(pageable);
+        }
+        
+        return usersPage.map(this::convertToDTO);
     }
     
    
     public UserDTO updateUser(Long id, UserDTO userDTO) {
+        if (id == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
         User user = userRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("User not found"));
         
@@ -113,44 +138,32 @@ public class UserService {
     UserRole newRole = UserRole.valueOf(userDTO.getRole());
     user.setRole(newRole);
         
-        if (userDTO.getLocationId() != null) {
-            Location location = locationRepository.findById(userDTO.getLocationId())
+        Long locationId = userDTO.getLocationId();
+        
+        // Enforce location for standard Users
+        if (newRole == UserRole.USER && locationId == null) {
+            throw new RuntimeException("Location is required for standard users.");
+        }
+        if (locationId != null) {
+            Location location = locationRepository.findById(locationId)
                 .orElseThrow(() -> new RuntimeException("Location not found"));
             user.setLocation(location);
         }
         
-        if (userDTO.getCompanyId() != null) {
-            Company company = companyRepository.findById(userDTO.getCompanyId())
+        Long companyId = userDTO.getCompanyId();
+        if (companyId != null) {
+            Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("Company not found"));
             user.setCompany(company);
         }
 
-        
-        if (newRole == UserRole.COMPANY_ADMIN || newRole == UserRole.SUPER_ADMIN) {
-            if (user.getAdmin() == null) {
-                Admin admin = new Admin();
-                admin.setUser(user);
-                admin.setCompany(user.getCompany());
-                admin.setIsSuperAdmin(newRole == UserRole.SUPER_ADMIN);
-                user.setAdmin(admin);
-            } else {
-               
-                user.getAdmin().setCompany(user.getCompany());
-                user.getAdmin().setIsSuperAdmin(newRole == UserRole.SUPER_ADMIN);
-            }
-        } else {
-            
-            if (user.getAdmin() != null) {
-                
-                Admin existing = user.getAdmin();
-                user.setAdmin(null);
-                try {
-                    adminRepository.delete(existing);
-                } catch (Exception ignored) {
-                   
-                }
-            }
+        if (userDTO.getIsTwoFactorEnabled() != null) {
+            user.setIsTwoFactorEnabled(userDTO.getIsTwoFactorEnabled());
         }
+
+        
+        // Admin role logic removed as Admin entity is deprecated. Use UserRole.
+
         
         User updatedUser = userRepository.save(user);
         return convertToDTO(updatedUser);
@@ -158,10 +171,13 @@ public class UserService {
     
     
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found");
+        if (id == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
         }
+        User userToDelete = userRepository.findById(id).get();
+        String userName = userToDelete.getName();
         userRepository.deleteById(id);
+        activityService.logWarning("User Account Deleted", "The account for " + userName + " was removed from the system.", null);
     }
     
     
@@ -173,7 +189,7 @@ public class UserService {
     }
     
     public List<UserDTO> getUsersByProvince(String provinceName) {
-        // Find province by name, ensure it's a PROVINCE, then collect all descendant locations
+       
         Location province = locationRepository.findByLocationName(provinceName)
             .orElseThrow(() -> new RuntimeException("Province not found"));
 
@@ -217,23 +233,56 @@ public class UserService {
         dto.setEmail(user.getEmail());
         dto.setPhone(user.getPhone());
         dto.setPassword("***"); 
-        dto.setRole(user.getRole().toString());
+        dto.setRole(user.getRole() != null ? user.getRole().toString() : "UNKNOWN");
         dto.setCreatedAt(user.getCreatedAt());
         
         if (user.getLocation() != null) {
             dto.setLocationId(user.getLocation().getLocationId());
             dto.setLocationName(user.getLocation().getLocationName());
+            
+            // Populate hierarchy
+            Location loc = user.getLocation();
+            while (loc != null) {
+                switch (loc.getLocationType()) {
+                    case PROVINCE:
+                        dto.setProvinceName(loc.getLocationName());
+                        break;
+                    case DISTRICT:
+                        dto.setDistrictName(loc.getLocationName());
+                        break;
+                    case SECTOR:
+                        dto.setSectorName(loc.getLocationName());
+                        break;
+                    case CELL:
+                        dto.setCellName(loc.getLocationName());
+                        break;
+                    case VILLAGE:
+                        dto.setVillageName(loc.getLocationName());
+                        break;
+                    default:
+                        // Handle unknown location type
+                        break;
+                }
+                loc = loc.getParentLocation();
+            }
         }
+        
+        // UserProfile removed from system
         
         if (user.getCompany() != null) {
             dto.setCompanyId(user.getCompany().getCompanyId());
             dto.setCompanyName(user.getCompany().getCompanyName());
         }
         
+        dto.setIsTwoFactorEnabled(user.getIsTwoFactorEnabled());
+        
         return dto;
     }
 
     public List<UserDTO> getUsersByProvince(Long provinceId) {
+        if (provinceId == null) {
+            throw new IllegalArgumentException("Province ID cannot be null");
+        }
         Location province = locationRepository.findById(provinceId)
             .orElseThrow(() -> new RuntimeException("Province not found"));
 

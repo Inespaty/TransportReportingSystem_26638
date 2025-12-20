@@ -5,6 +5,10 @@ import com.transport.TransportReportingSystem.service.LocationService;
 import com.transport.TransportReportingSystem.service.UserService;
 import com.transport.TransportReportingSystem.dto.UserDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,6 +57,12 @@ public class LocationController {
     public ResponseEntity<List<LocationDTO>> getAllLocations() {
         List<LocationDTO> locations = locationService.getAllLocations();
         return ResponseEntity.ok(locations);
+    }
+    
+    @GetMapping("/paginated")
+    public ResponseEntity<Page<LocationDTO>> getAllLocationsPaginated(
+            @PageableDefault(size = 10, sort = "locationId", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(locationService.getAllLocationsPaginated(pageable));
     }
     
     

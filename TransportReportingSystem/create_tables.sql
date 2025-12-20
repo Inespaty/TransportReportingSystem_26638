@@ -1,0 +1,1 @@
+-- UserProfile table removed - using User table only

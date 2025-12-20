@@ -21,7 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     
     
-    List<User> findByRole(String role);
+    List<User> findByRole(com.transport.TransportReportingSystem.enums.UserRole role);
     
     
     List<User> findByLocation(Location location);
@@ -36,8 +36,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Pagination 
     @NonNull
-    Page<User> findAll(@NonNull Pageable pageable);
-    
-    @NonNull
-    Page<User> findByRole(@NonNull String role, @NonNull Pageable pageable);
+    Page<User> findByRole(@NonNull com.transport.TransportReportingSystem.enums.UserRole role, @NonNull Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u WHERE u.company.companyId = :companyId AND (LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<User> searchUsersByCompany(@org.springframework.data.repository.query.Param("companyId") Long companyId, @org.springframework.data.repository.query.Param("keyword") String keyword, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u WHERE LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<User> searchUsers(@org.springframework.data.repository.query.Param("keyword") String keyword, Pageable pageable);
+
+    long countByCompanyCompanyId(Long companyId);
 }

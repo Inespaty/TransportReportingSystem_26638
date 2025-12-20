@@ -19,6 +19,14 @@ public class UserDTO {
     private LocalDate createdAt;
     private Long locationId;
     private String locationName;
+    private Long userProfileId;
+    
+    private String provinceName;
+    private String districtName;
+    private String sectorName;
+    private String cellName;
+    private String villageName;
     private Long companyId;
     private String companyName;
+    private Boolean isTwoFactorEnabled;
 }

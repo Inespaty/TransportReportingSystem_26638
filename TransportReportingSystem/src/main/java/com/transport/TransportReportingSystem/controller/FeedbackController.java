@@ -5,6 +5,8 @@ import com.transport.TransportReportingSystem.service.FeedbackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,12 +25,12 @@ public class FeedbackController {
     public ResponseEntity<FeedbackDTO> createFeedback(
             @RequestParam String title,
             @RequestParam String description,
-            @RequestParam String imageUrl,
+            @RequestParam(required = false) String imageUrl,
             @RequestParam String status,
             @RequestParam String issueCategory,
             @RequestParam Long userId,
             @RequestParam Long routeId,
-            @RequestParam Long assignedAdminId,
+            @RequestParam(required = false) Long assignedUserId,
             @RequestParam Long incidentLocationId) {
         FeedbackDTO feedbackDTO = new FeedbackDTO();
         feedbackDTO.setTitle(title);
@@ -38,7 +40,7 @@ public class FeedbackController {
         feedbackDTO.setIssueCategory(issueCategory);
         feedbackDTO.setUserId(userId);
         feedbackDTO.setRouteId(routeId);
-        feedbackDTO.setAssignedAdminId(assignedAdminId);
+        feedbackDTO.setAssignedUserId(assignedUserId);
         feedbackDTO.setIncidentLocationId(incidentLocationId);
         FeedbackDTO createdFeedback = feedbackService.createFeedback(feedbackDTO);
         return new ResponseEntity<>(createdFeedback, HttpStatus.CREATED);
@@ -79,8 +81,11 @@ public class FeedbackController {
     
     
     @GetMapping("/paginated")
-    public ResponseEntity<Page<FeedbackDTO>> getAllFeedbacksPaginated(Pageable pageable) {
-        Page<FeedbackDTO> feedbacks = feedbackService.getAllFeedbacksPaginated(pageable);
+    public ResponseEntity<Page<FeedbackDTO>> getAllFeedbacksPaginated(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 10, sort = "feedbackId", direction = Sort.Direction.DESC) Pageable pageable,
+            java.security.Principal principal) {
+        Page<FeedbackDTO> feedbacks = feedbackService.getAllFeedbacksPaginated(search, pageable, principal);
         return ResponseEntity.ok(feedbacks);
     }
     
@@ -90,12 +95,12 @@ public class FeedbackController {
             @PathVariable Long id,
             @RequestParam String title,
             @RequestParam String description,
-            @RequestParam String imageUrl,
+            @RequestParam(required = false) String imageUrl,
             @RequestParam String status,
             @RequestParam String issueCategory,
             @RequestParam Long userId,
             @RequestParam Long routeId,
-            @RequestParam Long assignedAdminId,
+            @RequestParam(required = false) Long assignedUserId,
             @RequestParam Long incidentLocationId) {
         FeedbackDTO feedbackDTO = new FeedbackDTO();
         feedbackDTO.setTitle(title);
@@ -105,10 +110,16 @@ public class FeedbackController {
         feedbackDTO.setIssueCategory(issueCategory);
         feedbackDTO.setUserId(userId);
         feedbackDTO.setRouteId(routeId);
-        feedbackDTO.setAssignedAdminId(assignedAdminId);
+        feedbackDTO.setAssignedUserId(assignedUserId);
         feedbackDTO.setIncidentLocationId(incidentLocationId);
         FeedbackDTO updatedFeedback = feedbackService.updateFeedback(id, feedbackDTO);
         return ResponseEntity.ok(updatedFeedback);
+    }
+
+    @PutMapping("/{id}/resolve")
+    public ResponseEntity<FeedbackDTO> resolveFeedback(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        String response = body.get("response");
+        return ResponseEntity.ok(feedbackService.resolveFeedback(id, response));
     }
     
     
@@ -130,5 +141,12 @@ public class FeedbackController {
     public ResponseEntity<List<FeedbackDTO>> getFeedbacksByStatus(@PathVariable String status) {
         List<FeedbackDTO> feedbacks = feedbackService.getFeedbacksByStatus(status);
         return ResponseEntity.ok(feedbacks);
+    }
+    @PutMapping("/{id}/status")
+    public ResponseEntity<FeedbackDTO> updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status,
+            @RequestParam(required = false) String response) {
+        return ResponseEntity.ok(feedbackService.updateStatus(id, status, response));
     }
 }

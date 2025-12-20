@@ -13,4 +13,5 @@ public class LocationDTO {
     private String locationType;
     private Long parentLocationId;
     private String parentLocationName;
+    private String fullHierarchy;
 }

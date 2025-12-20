@@ -12,14 +12,18 @@ public class FeedbackDTO {
     private String title;
     private String description;
     private String imageUrl;
+    private String adminResponse;
     private String status;
     private String issueCategory;
     private Long userId;
     private String userName;
     private Long routeId;
     private String routeName;
-    private Long assignedAdminId;
-    private String assignedAdminName;
+    private Long assignedUserId;
+    private String assignedUserName;
     private Long incidentLocationId;
     private String incidentLocationName;
+    private Long companyId;
+    private String companyName;
+    private String createdAt;
 }

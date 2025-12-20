@@ -21,6 +21,12 @@ public interface RouteRepository extends JpaRepository<Route, Long> {
     
 
     List<Route> findByCompany(Company company);
+
+    List<Route> findByCompanyCompanyId(Long companyId);
+    
+    long countByCompanyCompanyId(Long companyId);
+    
+    Page<Route> findByCompanyCompanyId(Long companyId, Pageable pageable);
     
     
     List<Route> findByCompanyCompanyName(String companyName);
@@ -35,6 +41,12 @@ public interface RouteRepository extends JpaRepository<Route, Long> {
     @NonNull
     Page<Route> findAll(@NonNull Pageable pageable);
     
+    @org.springframework.data.jpa.repository.Query("SELECT r FROM Route r WHERE LOWER(r.routeNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.routeName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.startPoint) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.endPoint) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.company.companyName) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Route> searchRoutes(@org.springframework.data.repository.query.Param("keyword") String keyword, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r FROM Route r WHERE r.company.companyId = :companyId AND (LOWER(r.routeNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.routeName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.startPoint) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(r.endPoint) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Route> searchRoutesByCompanyRole(@org.springframework.data.repository.query.Param("companyId") Long companyId, @org.springframework.data.repository.query.Param("keyword") String keyword, Pageable pageable);
+
     @NonNull
     Page<Route> findByCompany(@NonNull Company company, @NonNull Pageable pageable);
 }

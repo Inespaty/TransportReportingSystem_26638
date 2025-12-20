@@ -2,7 +2,6 @@ package com.transport.TransportReportingSystem.service;
 
 import com.transport.TransportReportingSystem.dto.LocationDTO;
 import com.transport.TransportReportingSystem.entity.Location;
-import com.transport.TransportReportingSystem.entity.User;
 import com.transport.TransportReportingSystem.enums.LocationType;
 import com.transport.TransportReportingSystem.repository.LocationRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +23,20 @@ public class LocationService {
         location.setLocationType(LocationType.valueOf(locationDTO.getLocationType()));
         
         
-        if (locationDTO.getParentLocationId() != null) {
-            Location parent = locationRepository.findById(locationDTO.getParentLocationId())
+        Long parentLocationId = locationDTO.getParentLocationId();
+        if (parentLocationId != null) {
+            Location parent = locationRepository.findById(parentLocationId)
                 .orElseThrow(() -> new RuntimeException("Parent location not found"));
+            
+            if (locationRepository.findByLocationNameAndParentLocation(locationDTO.getLocationName(), parent).isPresent()) {
+                 throw new RuntimeException("Location " + locationDTO.getLocationName() + " already exists in parent " + parent.getLocationName());
+            }
             location.setParentLocation(parent);
+        } else {
+             if (locationRepository.findByLocationName(locationDTO.getLocationName()).isPresent()) {
+                 // Relaxed check for provinces/roots or strict? Assuming roots must be unique globally.
+                  throw new RuntimeException("Root Location " + locationDTO.getLocationName() + " already exists");
+             }
         }
         
         Location savedLocation = locationRepository.save(location);
@@ -36,6 +45,9 @@ public class LocationService {
     
     
     public LocationDTO getLocationById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Location ID cannot be null");
+        }
         Location location = locationRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Location not found"));
         return convertToDTO(location);
@@ -45,6 +57,14 @@ public class LocationService {
         return locationRepository.findAll().stream()
             .map(this::convertToDTO)
             .collect(Collectors.toList());
+    }
+
+    public org.springframework.data.domain.Page<LocationDTO> getAllLocationsPaginated(org.springframework.data.domain.Pageable pageable) {
+        if (pageable == null) {
+            throw new IllegalArgumentException("Pageable cannot be null");
+        }
+        return locationRepository.findAll(pageable)
+            .map(this::convertToDTO);
     }
     
     
@@ -73,6 +93,9 @@ public class LocationService {
     
     
     public LocationDTO updateLocation(Long id, LocationDTO locationDTO) {
+        if (id == null) {
+            throw new IllegalArgumentException("Location ID cannot be null");
+        }
         Location location = locationRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Location not found"));
         
@@ -80,8 +103,9 @@ public class LocationService {
         location.setLocationType(LocationType.valueOf(locationDTO.getLocationType()));
        
         
-        if (locationDTO.getParentLocationId() != null) {
-            Location parent = locationRepository.findById(locationDTO.getParentLocationId())
+        Long parentLocationId = locationDTO.getParentLocationId();
+        if (parentLocationId != null) {
+            Location parent = locationRepository.findById(parentLocationId)
                 .orElseThrow(() -> new RuntimeException("Parent location not found"));
             location.setParentLocation(parent);
         }
@@ -92,6 +116,9 @@ public class LocationService {
     
     
     public void deleteLocation(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Location ID cannot be null");
+        }
         if (!locationRepository.existsById(id)) {
             throw new RuntimeException("Location not found");
         }
@@ -99,10 +126,6 @@ public class LocationService {
     }
     
 
-  
-
-    
-   
     private LocationDTO convertToDTO(Location location) {
         LocationDTO dto = new LocationDTO();
         dto.setLocationId(location.getLocationId());
@@ -113,6 +136,17 @@ public class LocationService {
             dto.setParentLocationName(location.getParentLocation().getLocationName());
         }
         
+        dto.setFullHierarchy(buildHierarchyString(location));
         return dto;
+    }
+
+    private String buildHierarchyString(Location location) {
+        StringBuilder sb = new StringBuilder(location.getLocationName());
+        Location current = location.getParentLocation();
+        while (current != null) {
+            sb.insert(0, current.getLocationName() + " > ");
+            current = current.getParentLocation();
+        }
+        return sb.toString();
     }
 }

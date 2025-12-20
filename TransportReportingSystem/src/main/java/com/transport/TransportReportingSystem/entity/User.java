@@ -1,7 +1,5 @@
 package com.transport.TransportReportingSystem.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.transport.TransportReportingSystem.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,7 +14,6 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
     
     @Id
@@ -45,15 +42,14 @@ public class User {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id")
-    @JsonManagedReference
+   
     private Location location;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = true)
     private Company company;
     
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private Admin admin;
+
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Feedback> feedbacks;
@@ -65,4 +61,7 @@ public class User {
         inverseJoinColumns = @JoinColumn(name = "route_id")
     )
     private List<Route> routes;
+
+    @Column(name = "is_two_factor_enabled")
+    private Boolean isTwoFactorEnabled = false;
 }

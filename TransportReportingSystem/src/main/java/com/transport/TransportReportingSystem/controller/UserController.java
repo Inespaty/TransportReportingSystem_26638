@@ -5,6 +5,8 @@ import com.transport.TransportReportingSystem.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +29,8 @@ public class UserController {
             @RequestParam String password,
             @RequestParam String role,
             @RequestParam Long locationId,
-            @RequestParam(required = false) Long companyId) {
+            @RequestParam(required = false) Long companyId,
+            @RequestParam(defaultValue = "false") Boolean isTwoFactorEnabled) {
         UserDTO userDTO = new UserDTO();
         userDTO.setName(name);
         userDTO.setEmail(email);
@@ -36,6 +39,7 @@ public class UserController {
         userDTO.setRole(role);
         userDTO.setLocationId(locationId);
         userDTO.setCompanyId(companyId);
+        userDTO.setIsTwoFactorEnabled(isTwoFactorEnabled);
         UserDTO createdUser = userService.createUser(userDTO);
         return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
@@ -55,8 +59,10 @@ public class UserController {
     }
   
     @GetMapping("/paginated")
-    public ResponseEntity<Page<UserDTO>> getAllUsersPaginated(Pageable pageable) {
-        Page<UserDTO> users = userService.getAllUsersPaginated(pageable);
+    public ResponseEntity<Page<UserDTO>> getAllUsersPaginated(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 10, sort = "userId", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<UserDTO> users = userService.getAllUsersPaginated(search, pageable);
         return ResponseEntity.ok(users);
     }
     
@@ -70,7 +76,8 @@ public class UserController {
             @RequestParam String password,
             @RequestParam String role,
             @RequestParam Long locationId,
-            @RequestParam(required = false) Long companyId) {
+            @RequestParam(required = false) Long companyId,
+            @RequestParam(defaultValue = "false") Boolean isTwoFactorEnabled) {
         UserDTO userDTO = new UserDTO();
         userDTO.setName(name);
         userDTO.setEmail(email);
@@ -79,6 +86,7 @@ public class UserController {
         userDTO.setRole(role);
         userDTO.setLocationId(locationId);
         userDTO.setCompanyId(companyId);
+        userDTO.setIsTwoFactorEnabled(isTwoFactorEnabled);
         UserDTO updatedUser = userService.updateUser(id, userDTO);
         return ResponseEntity.ok(updatedUser);
     }

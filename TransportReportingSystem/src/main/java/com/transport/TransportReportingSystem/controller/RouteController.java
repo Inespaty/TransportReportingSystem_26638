@@ -5,6 +5,8 @@ import com.transport.TransportReportingSystem.service.RouteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -56,8 +58,11 @@ public class RouteController {
     
     
     @GetMapping("/paginated")
-    public ResponseEntity<Page<RouteDTO>> getAllRoutesPaginated(Pageable pageable) {
-        Page<RouteDTO> routes = routeService.getAllRoutesPaginated(pageable);
+    public ResponseEntity<Page<RouteDTO>> getAllRoutesPaginated(
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 10, sort = "routeId", direction = Sort.Direction.DESC) Pageable pageable,
+            java.security.Principal principal) {
+        Page<RouteDTO> routes = routeService.getAllRoutesPaginated(search, pageable, principal);
         return ResponseEntity.ok(routes);
     }
     

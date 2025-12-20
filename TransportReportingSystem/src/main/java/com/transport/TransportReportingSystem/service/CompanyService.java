@@ -22,6 +22,9 @@ public class CompanyService {
     
     public CompanyDTO createCompany(CompanyDTO companyDTO) {
         Company company = new Company();
+        if (companyRepository.findByCompanyName(companyDTO.getCompanyName()).isPresent()) {
+             throw new RuntimeException("Company with name " + companyDTO.getCompanyName() + " already exists");
+        }
         company.setCompanyName(companyDTO.getCompanyName());
         company.setDescription(companyDTO.getDescription());
         company.setContactInfo(companyDTO.getContactInfo());
@@ -32,6 +35,9 @@ public class CompanyService {
     
    
     public CompanyDTO getCompanyById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Company ID cannot be null");
+        }
         Company company = companyRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Company not found"));
         return convertToDTO(company);
@@ -45,13 +51,23 @@ public class CompanyService {
     }
     
     
-    public Page<CompanyDTO> getAllCompaniesPaginated(Pageable pageable) {
+    public Page<CompanyDTO> getAllCompaniesPaginated(String search, Pageable pageable) {
+        if (pageable == null) {
+            throw new IllegalArgumentException("Pageable cannot be null");
+        }
+        if (search != null && !search.trim().isEmpty()) {
+            return companyRepository.searchCompanies(search, pageable)
+                .map(this::convertToDTO);
+        }
         return companyRepository.findAll(pageable)
             .map(this::convertToDTO);
     }
     
     
     public CompanyDTO updateCompany(Long id, CompanyDTO companyDTO) {
+        if (id == null) {
+            throw new IllegalArgumentException("Company ID cannot be null");
+        }
         Company company = companyRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Company not found"));
         
@@ -66,6 +82,9 @@ public class CompanyService {
     
     
     public void deleteCompany(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Company ID cannot be null");
+        }
         if (!companyRepository.existsById(id)) {
             throw new RuntimeException("Company not found");
         }

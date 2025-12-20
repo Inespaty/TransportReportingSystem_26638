@@ -33,7 +33,4 @@ public class Company {
     
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
     private List<Route> routes;
-    
-    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
-    private List<Admin> admins;
 }
